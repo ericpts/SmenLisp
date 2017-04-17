@@ -41,6 +41,11 @@ class IntConstant implements AtomObject {
     public boolean bool() {
         return value_ != 0;
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(this.value());
+    }
 }
 
 class FloatConstant implements AtomObject {
@@ -61,6 +66,11 @@ class FloatConstant implements AtomObject {
     @Override
     public boolean bool() {
         return value_ != 0.0;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(this.value());
     }
 }
 
@@ -91,8 +101,13 @@ class Symbol implements AtomObject {
     }
 
     static Symbol False() {
-        Symbol ret = new Symbol("f");
+        Symbol ret = new Symbol("#f");
         return ret;
+    }
+
+    @Override
+    public String toString() {
+        return this.value();
     }
 }
 

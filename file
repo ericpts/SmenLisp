@@ -1,0 +1,12 @@
+
+(define (fact n)
+    (define (fact-impl fun n acum)
+                (if (= n 0)
+                    acum
+                    (fun fun
+                         (- n 1)
+                         (* n acum))))
+    (fact-impl fact-impl n 1))
+
+(print (fact 10))
+

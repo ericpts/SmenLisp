@@ -77,6 +77,18 @@ public class Environment {
             }
         });
 
+        ret.add("-", new Procedure() {
+            @Override
+            public SmenObject call(List<SmenObject> args) {
+                Stream<Number> mapStream = args.stream().map(toNumber);
+                if (args.stream().anyMatch(obj -> obj instanceof FloatConstant)) {
+                    return new FloatConstant(mapStream.reduce((r, r2) -> r.floatValue() - r2.floatValue()).get().floatValue());
+                } else {
+                    return new IntConstant(mapStream.reduce((r, r2) -> r.intValue() - r2.intValue()).get().intValue());
+                }
+            }
+        });
+
         ret.add("=", new Procedure() {
             @Override
             public SmenObject call(List<SmenObject> args) {
@@ -102,6 +114,14 @@ public class Environment {
                 }
 
                 return args.stream().allMatch(obj -> obj.equals(sample)) ? Symbol.True() : Symbol.False();
+            }
+        });
+
+        ret.add("print", new Procedure() {
+            @Override
+            public SmenObject call(List<SmenObject> args) {
+                args.stream().forEach(obj -> System.out.println(obj.toString()));
+                return Symbol.True();
             }
         });
 

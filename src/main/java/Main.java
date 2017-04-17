@@ -27,7 +27,13 @@ class Args {
 
 public class Main {
 
-    static SmenObject lambda(SExpression argSymbols, SmenObject body, Environment env) {
+    /**
+     *
+     * argSymbols has the form (s1 s2 ... sn).
+     * This returns a procedure which accepts n arguments, binds the symbols to the formal arguments and then evaluates body.
+     * Body is a list of SExpressions. Each expression inside it is evaluated and the last one is returned
+     */
+    static SmenObject lambda(SExpression argSymbols, SExpression body, Environment env) {
         return (Procedure) args -> {
             assert(argSymbols.size() == args.size());
             final int n = args.size();
@@ -37,7 +43,8 @@ public class Main {
                 newEnv.add(((Symbol)argSymbols.get(i)).value(), args.get(i));
             }
 
-            return eval(body, newEnv);
+            // Evaluate all expressions and return the last one.
+            return body.objects().stream().map(obj -> eval(obj, newEnv)).reduce((x, y) -> y).get();
         };
     }
 
@@ -55,12 +62,42 @@ public class Main {
         List<String> tokens = lexer.parse(content);
         List<SmenObject> exps = Parser.parse(tokens);
 
-        System.out.println("HERE!");
-
         Environment env = Environment.defaultEnvironment();
-        exps.stream().forEach(obj -> {
-            System.out.println(eval(obj, env));
-        });
+        exps.stream().forEach(obj -> eval(obj, env));
+    }
+
+    static SmenObject handleIf(SExpression tail, Environment env) {
+        SmenObject pred = tail.get(0);
+        if (eval(pred, env).bool()) {
+            return eval(tail.get(1), env);
+        } else if (tail.size() == 3) {
+            return eval(tail.get(2), env);
+        }
+
+        return Symbol.False();
+    }
+
+    static SmenObject handleDefine(SExpression tail, Environment env) {
+        if (tail.get(0).atom()) {
+            // It is of the form
+            // (define x <val>)
+            assert (tail.size() == 2);
+            Symbol var = (Symbol) tail.get(0);
+            env.add(var.value(), eval(tail.get(1), env));
+            return var;
+        } else {
+            // Otherwise it is a procedure definition
+            // (define (fun args...) (body))
+
+            SExpression funArgs = (SExpression) tail.car();
+            SExpression body = (SExpression) tail.cdr();
+
+            Symbol funName = (Symbol) funArgs.car();
+            SExpression args = (SExpression) funArgs.cdr();
+            env.add(funName.value(), lambda(args, body, env));
+
+            return funName;
+        }
     }
 
 
@@ -74,51 +111,30 @@ public class Main {
         }
         // Otherwise it is a combination.
         final SExpression exp = (SExpression) x;
-        final Symbol head = (Symbol) eval(exp.car(), env);
+        final SmenObject head = exp.car();
         final SExpression tail = (SExpression)exp.cdr();
 
-        if (head.value() == "if") {
-            SmenObject pred = tail.get(0);
-            if (eval(pred, env).bool()) {
-                return eval(tail.get(1), env);
-            } else if (tail.size() == 3) {
-                return eval(tail.get(2), env);
+        if (head instanceof Symbol) {
+            final String symbol = ((Symbol) head).value();
+
+            if (symbol.equals("if")) {
+                return handleIf(tail, env);
+            }
+
+            if (symbol.equals("define")) {
+                return handleDefine(tail, env);
+            }
+
+            if (symbol.equals("lambda")) {
+                // (lambda (args) (body))
+                final SExpression argSymbols = (SExpression) tail.get(0);
+                final SExpression body = (SExpression)tail.cdr();
+
+                return lambda(argSymbols, body, env);
             }
         }
 
-        if (head.value() == "define") {
-            if (tail.get(0).atom()) {
-                // It is of the form
-                // (define x <val>)
-                assert (tail.size() == 2);
-                Symbol var = (Symbol) tail.get(0);
-                env.add(var.value(), eval(tail.get(1), env));
-                return var;
-            } else {
-                // Otherwise it is a procedure definition
-                // (define (fun args...) (body))
-
-                SExpression funArgs = (SExpression)tail.car();
-                SmenObject body = tail.cdr();
-
-                Symbol funName = (Symbol)funArgs.car();
-                SExpression args = (SExpression)funArgs.cdr();
-                env.add(funName.value(), lambda(args, body, env));
-
-                return funName;
-            }
-        }
-
-        if (head.value() == "lambda") {
-            // The first part are the arguments
-            final SExpression argSymbols = (SExpression)tail.get(0);
-            final SmenObject body = tail.get(1);
-
-
-            return lambda(argSymbols, body, env);
-        }
-
-        return apply(head, tail.objects());
+        return apply(eval(head, env), tail.objects().stream().map(obj -> eval(obj, env)).collect(Collectors.toList()));
     }
 
     static SmenObject apply(SmenObject procObject, List<SmenObject> args) {

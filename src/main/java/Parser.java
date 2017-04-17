@@ -1,3 +1,4 @@
+import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -47,6 +48,8 @@ class Parser {
                 while ((t = stack.pop()).type_ != ParseToken.Type.PAREN) {
                     exp.add(t.object());
                 }
+                // The objects get pushed in the reverse order.
+                Collections.reverse(exp.objects_);
                 stack.push(new ParseToken(exp));
             } else {
                 SmenObject obj;

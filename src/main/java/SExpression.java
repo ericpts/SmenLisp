@@ -34,7 +34,7 @@ class SExpression implements SmenObject {
         return objects_.get(0);
     }
 
-    SmenObject cdr() {
+    SExpression cdr() {
         return new SExpression(objects_.subList(1, objects_.size()));
     }
 
